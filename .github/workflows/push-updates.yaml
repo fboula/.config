@@ -1,0 +1,35 @@
+name: Push updates on release
+
+on:
+  push:
+  # release:
+  #   types:
+  #     - published
+  #   paths:
+  #     - '.tflint.hcl'
+
+jobs:
+  push-updates:
+    runs-on: ubuntu-latest
+    container:
+      image: fboulanger/git-xargs:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Get repo list
+        id: repo-list
+        run: |
+          set -eo pipefail
+          gh repo list --json 'name' | jq -r '.[] | select(.name | test(".*test.*")) | .name' > repo-list
+        env:
+          GH_TOKEN: ${{ secrets.GH_REPO_TOKEN }}
+
+      # Use hard coded repo since I cannot parse org
+      - name: Update tflint.hcl
+        run: |
+          git config --global user.name "John Doe"
+          git config --global user.email "john@doe.org"
+          git-xargs --loglevel DEBUG --repo fboula/test-config-update --branch-name update-tflint --commit-message "chore: Update tflint configuration" cp $(pwd)/.tflint.hcl .tflint.hcl
+        env:
+          GITHUB_OAUTH_TOKEN:  ${{ secrets.GH_REPO_TOKEN }}
